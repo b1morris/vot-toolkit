@@ -16,7 +16,7 @@ function [normalized_speed, actual_speed] = normalize_speed(speed, failures, ski
 % - actual_speed (double): Corrected raw speed based on supplied information,
 %
 
-if ~isfield(tracker, 'performance')
+if (~isfield(tracker, 'performance') || isempty(tracker.performance))
     error('Tracker %s has no performance profile, unable to normalize speed.', tracker.identifier);
 end;
 

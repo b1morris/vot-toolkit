@@ -106,9 +106,16 @@ function context = speed_iterator(event, context)
             average_speed = nanmean(times(:, valid), 1)';
             average_original = mean(average_speed);
             
-            if isfield(event.tracker, 'performance')           
+            %only keep valid entries based on number of repetitions in
+            %stack definition -> change stack for only 1 repeition for
+            %known non-stochastic trackers
+            valid = valid(1:repeat);
+            
+            if isfield(event.tracker, 'performance') && ~isempty(event.tracker.performance) 
+                if(isfield(event.experiment.parameters, 'skip_initialize')), skip = event.experiment.parameters.skip_initialize; else skip = 0; end
+                    
                 average_normalized = mean(normalize_speed(average_speed, ...
-                    failures(valid), event.experiment.parameters.skip_initialize, event.tracker, event.sequence));
+                    failures(valid), skip, event.tracker, event.sequence));
             else
 				average_normalized = NaN;
                 print_debug('Warning: No performance profile for tracker %s.', event.tracker.identifier);
