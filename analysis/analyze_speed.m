@@ -111,11 +111,13 @@ function context = speed_iterator(event, context)
             %known non-stochastic trackers
             valid = valid(1:repeat);
             
-            if isfield(event.tracker, 'performance') && ~isempty(event.tracker.performance) 
-                if(isfield(event.experiment.parameters, 'skip_initialize')), skip = event.experiment.parameters.skip_initialize; else skip = 0; end
-                    
+            if isfield(event.tracker, 'performance') && ~isempty(event.tracker.performance)
+                skip_initialize = 0;
+                if isfield(event.experiment.parameters, 'skip_initialize')
+                    skip_initialize = event.experiment.parameters.skip_initialize;
+                end;
                 average_normalized = mean(normalize_speed(average_speed, ...
-                    failures(valid), skip, event.tracker, event.sequence));
+                    failures(valid), skip_initialize, event.tracker, event.sequence));
             else
 				average_normalized = NaN;
                 print_debug('Warning: No performance profile for tracker %s.', event.tracker.identifier);

@@ -1,12 +1,11 @@
-function [sequence] = create_sequence(directory, varargin)
-% create_sequence Create a new sequence descriptor
+function [sequence] = sequence_create(sequence_path, varargin)
+% sequence_create Create a new sequence descriptor
 %
 % Create a new sequence structure by loading the information from the directory.
 %
 % Input:
-% - directory: Path to the sequence directory.
+% - sequence_path: Path to the sequence directory or to the sequence metadata file.
 % - varargin[Name]: Name of the sequence. By default the name of the directory is taken as the name of the sequence.
-% - varargin[Mask]: File pattern for images. By default '%08d.jpg' is used.
 % - varargin[Dummy]: Create the sequence structure without checking if all the images exist.
 % - varargin[Start]: The number of the first frame in the sequence (1 by default).
 %
@@ -15,24 +14,58 @@ function [sequence] = create_sequence(directory, varargin)
 
 start = 1;
 dummy = false;
+metadata = struct();
 
-if all(size(dir([directory '/*.jpg'])))
-    mask = '%08d.jpg';
-elseif all(size(dir([directory '/*.png'])))
-    mask = '%08d.png';
+if exist(sequence_path, 'file') == 2
+    metadata = readstruct(sequence_path);
+	directory = fileparts(sequence_path);
 else
-    error('Unkown file ending for sequence frames');
+    directory = sequence_path;
 end;
 
+default_channel = 'color';
 
-[parent, name] = fileparts(directory);
+if isfield(metadata, 'format') && ~strcmpi(metadata.format, 'default')
+    sequence_function = str2func(['sequence_create_', metadata.format]);
+    sequence = sequence_function(directory, metadata);
+    sequence.format = metadata.format;
+    return;
+end
+
+if isfield(metadata, 'channels') && isfield(metadata.channels, 'default')
+   default_channel = metadata.channels.default;    
+end
+
+% At the moment we only load default channel, multi-channel sequences will
+% be supported someday
+
+channel_directory = directory;
+
+if ~isfield(metadata, 'channels') || ~isfield(metadata.channels, default_channel)
+	if all(size(dir([directory, '/*.jpg'])))
+		mask = '%08d.jpg';
+	elseif all(size(dir([directory, '/*.png'])))
+		mask = '%08d.png';
+	end;
+else
+    [sdir, sfile, sext] = fileparts(metadata.channels.(default_channel));
+    
+    channel_directory = fullfile(directory, sdir);
+    
+    if isempty(sfile)
+        mask = '%08d.jpg';
+    else
+        mask = [sfile, sext];
+    end
+    
+end;
+
+[~, name] = fileparts(directory);
 
 for i = 1:2:length(varargin)
     switch lower(varargin{i})
         case 'name'
             name = varargin{i+1};
-        case 'mask'
-            mask = varargin{i+1};
         case 'dummy'
             dummy = varargin{i+1};
         case 'start'
@@ -42,9 +75,13 @@ for i = 1:2:length(varargin)
     end
 end
 
+if isempty(mask)
+    error('Unkown file ending for sequence frames');
+end;
+
 sequence = struct('name', name, 'directory', directory, ...
         'mask', mask, 'length', 0, ...
-        'file', 'groundtruth.txt');
+        'file', 'groundtruth.txt', 'images_directory', channel_directory);
 
 sequence.groundtruth = read_trajectory(fullfile(sequence.directory, sequence.file));
 
@@ -55,7 +92,7 @@ sequence.initialize = @(sequence, index, context) get_region(sequence, index);
 while true
     image_name = sprintf(mask, sequence.length + start);
 
-    if ~exist(fullfile(sequence.directory, image_name), 'file')
+    if ~exist(fullfile(channel_directory, image_name), 'file')
         if dummy && sequence.length > 0 && sequence.length <= numel(sequence.groundtruth)
             sequence.images{sequence.length + 1} = sequence.images{1};
         else

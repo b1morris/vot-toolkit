@@ -1,6 +1,12 @@
 function experiments = stack_vot2014()
 
-set_global_variable('bundle', 'http://data.votchallenge.net/vot2014/vot2014.zip');
+print_text('');
+print_text(' **** Deprecation warning **** ');
+print_text('Note that VOT2014 benchmark is deprecated.');
+print_text('You can still use it, the toolkit may no longer produce results that are the same as in the challenge paper.');
+print_text('');
+
+set_global_variable('bundle', 'http://data.votchallenge.net/vot2014/dataset/description.json');
 set_global_variable('legacy_rasterization', true);
 set_global_variable('bounded_overlap', false);
 
@@ -13,6 +19,7 @@ baseline.parameters.repetitions = 15;
 baseline.parameters.burnin = 10;
 baseline.parameters.skip_initialize = 5;
 baseline.parameters.failure_overlap = 0;
+baseline.analysis = {'ar_rank', 'speed'};
 
 region_noise.name = 'region_noise';
 region_noise.converter = @(sequence) sequence_transform_initialization(...
@@ -24,6 +31,7 @@ region_noise.parameters.repetitions = 15;
 region_noise.parameters.burnin = 10;
 region_noise.parameters.skip_initialize = 5;
 region_noise.parameters.failure_overlap = 0;
+region_noise.analysis = {'ar_rank', 'speed'};
 
 experiments = {baseline, region_noise};
 

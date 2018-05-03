@@ -34,7 +34,7 @@ for j=1:2:length(varargin)
         case 'persist', persist = varargin{j+1};
         case 'pool', pool = varargin{j+1};
         case 'log', log = varargin{j+1};
-        otherwise, error(['unrecognized argument ' varargin{j}]);
+        otherwise, error(['unrecognized argument ', varargin{j}]);
     end
 end
 
@@ -87,7 +87,7 @@ switch lower(mode)
             mkpath(log);
             context.logdir = log;
         end
-    otherwise, error(['unrecognized mode ' mode]);
+    otherwise, error(['unrecognized mode ', mode]);
 end
 
 context = iterate(experiments, trackers, sequences, 'iterator', iterator, 'context', context);
@@ -100,33 +100,44 @@ end
 
 function context = execute_iterator(event, context)
 
-switch (event.type)
+    switch (event.type)
     case 'experiment_enter'
-        
+
         print_text('Experiment %s', event.experiment.name);
-        
+
         print_indent(1);
     case 'experiment_exit'
-        
+
         print_indent(-1);
-        
+
     case 'tracker_enter'
-        
+
         print_text('Tracker %s', event.tracker.identifier);
-        
+
         print_indent(1);
-        
+
     case 'tracker_exit'
-        
+
         print_indent(-1);
-        
+
     case 'sequence_enter'
-        
+
         print_text('Sequence %s', event.sequence.name);
-        
-        tracker_evaluate(event.tracker, event.sequence, event.experiment);
-        
-end;
+        try
+
+            tracker_evaluate(event.tracker, event.sequence, event.experiment);
+
+        catch e
+			context.errors = context.errors + 1;
+            if context.persist
+            	disp(getReport(e));
+            else
+                rethrow(e);
+            end
+
+        end;
+
+    end;
 
 end
 
@@ -164,7 +175,7 @@ while true
         fetchNext(context.tasks(:));
     catch
     end;
-    
+
     completed = [context.tasks.Read];
     if all(completed)
         break;
@@ -202,7 +213,7 @@ switch (event.type)
         fprintf(context.file, 'TOOLKIT="%s"\n', fullfile(get_global_variable('toolkit_path')));
         
         fprintf(context.file, '.DEFAULT_GOAL := all\n\n');
-
+        
     case 'exit'
         
         fprintf(context.file, 'all: ');
@@ -249,7 +260,7 @@ switch (event.type)
         
         fprintf(context.file, 'job_%s_%s_%s:\n', tracker.identifier, ...
             experiment.name, sequence.name);
-
+        
         context.list{end+1} = sprintf( 'job_%s_%s_%s', tracker.identifier, ...
             experiment.name, sequence.name);
         
@@ -295,6 +306,5 @@ switch (event.type)
         context.current = context.current + 1;
         
 end;
-
 
 end
